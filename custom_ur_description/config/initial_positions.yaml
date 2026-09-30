@@ -1,0 +1,14 @@
+# Starting pose for UR3 — captured from a live /joint_states snapshot.
+shoulder_pan_joint:   1.644967
+shoulder_lift_joint: -1.256521
+elbow_joint:          1.633637
+wrist_1_joint:       -1.942149
+wrist_2_joint:       -1.577577
+wrist_3_joint:       -1.292662
+
+# shoulder_pan_joint:  0.1
+# shoulder_lift_joint: 0.1
+# elbow_joint:          0.1
+# wrist_1_joint:       0.1
+# wrist_2_joint:       0.1
+# wrist_3_joint:        0.1 

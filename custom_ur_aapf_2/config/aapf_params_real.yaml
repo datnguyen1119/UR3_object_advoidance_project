@@ -1,0 +1,140 @@
+# Parameters for custom_ur_aapf_2::SupervisorNode — REAL ROBOT (Stage 2).
+#
+# Bản REAL tách riêng khỏi config mô phỏng (aapf_params.yaml). Khác bản sim ở
+# KHỐI "Trajectory controller handoff" (xem ghi chú ↓). Các tham số AAPF/khoảng
+# cách/timing giữ giống sim để hành vi né vật cản nhất quán — chỉnh ở đây nếu
+# robot thật cần tuning khác.
+#
+# Top-level key phải khớp tên node (aapf_supervisor).
+# Distances [m], times [s], rates [Hz]. "Index offset/count" là số waypoint DÀY
+# (đã subdivide); khoảng cách vật lý ≈ offset * subdivide_step_m.
+aapf_supervisor:
+  ros__parameters:
+
+    # ======== Obstacle-distance bands (§12: obstacle distances) ========
+    safe_distance:              0.15   # [m] waypoint/EE considered SAFE at/above this (P1, P2 must clear it)
+    blocked_distance_threshold: 0.12   # [m] (A1) chỉ bật AAPF khi vật cản CHẶN sát quỹ đạo (was 0.12)
+    emergency_distance:         0.03   # [m] EE nearer than this → immediate STOP (EE_TOO_CLOSE) — hạ 0.05→0.03 để AAPF né lâu hơn trước khi dừng khẩn
+    return_clearance:           0.20   # [m] EE clearance required before leaving AAPF_AVOID
+
+    # ======== Waypoint / lookahead (§12: waypoint/lookahead) ========
+    lookahead_waypoint_count: 50       # DETECTION range: dense waypoints ahead to look for a block (≈50 cm)
+    p1_search_horizon:        200      # P1 SEARCH range: how far ahead the safe exit (P1) may be found (≈2 m)
+    p1_index_offset:          8        # P1 margin placed PAST the blocked region (KEEP SMALL « horizon)
+    p2_index_offset:          10       # P2 margin placed BEFORE the blocked region (near, safety)
+    max_p1_p2_distance:       0.60     # [m] P1–P2 span above this → OBSTACLE_TOO_LARGE
+    min_p1_p2_distance:       0.04     # [m] minimum P1–P2 separation to bother avoiding
+
+    # ======== Return to trajectory (§12: rejoin) ========
+    return_to_path_distance: 0.05      # [m] EE within this of the path → rejoin to FOLLOW
+    rejoin_waypoint_offset:  20        # attractor waypoint offset while returning
+
+    # ======== Always-on debug lookahead points (visualization only) ========
+    vis_p2_offset: 10                  # near debug lookahead (≈10 cm at 1 cm/step)
+    vis_p1_offset: 50                  # far  debug lookahead (≈25 cm at 1 cm/step)
+
+    # ======== Cartesian subdivision + nearest search ========
+    subdivide_step_m:     0.01         # [m] target dense segment length after subdivision
+    search_window_steps:  40           # forward window for the incremental nearest search
+
+    # ======== Timing (§12: time/frequency) ========
+    obstacle_check_rate: 30.0          # [Hz] P1/P2 + obstacle check (slow decision tick)
+    aapf_control_rate:   200.0         # [Hz] AAPF velocity compute + publish (fast tick)
+    avoid_timeout:       25.0          # [s] max time in AAPF_AVOID before STOP (AAPF_TIMEOUT)
+    rejoin_timeout:      8.0           # [s] max time in RETURN before STOP (REJOIN_FAILED)
+    scene_stale_sec:     0.5           # [s] planning scene older than this → STOP (SCENE_STALE)
+
+    # ======== Safety (§12: safety) ========
+    max_path_deviation: 0.50           # [m] EE-to-path beyond this → STOP (P1_UNSTABLE_OR_INVALID)
+
+    # ======== EE / gripper ========
+    gripper_z_offset: 0.01            # [m] tool0 → gripper tip along tool0 local Z
+
+    # ======== Arm joints (order matters; matches MoveIt group) ========
+    arm_joints:
+      - "shoulder_pan_joint"
+      - "shoulder_lift_joint"
+      - "elbow_joint"
+      - "wrist_1_joint"
+      - "wrist_2_joint"
+      - "wrist_3_joint"
+
+    # ======== Topics ========
+    trajectory_topic:  "/display_planned_path"   # global plan in (DisplayTrajectory)
+    servo_twist_topic: "/delta_twist_cmds"       # Cartesian twist out → Servo (khớp moveit_servo.yaml)
+    servo_joint_topic: "/delta_joint_cmds"       # JointJog out → Servo joint path (khớp joint_command_in_topic)
+
+    # ======== Singularity coast (trục 2) ========
+    # Gần singularity, Servo (Cartesian path) tự giảm tốc → robot bò chậm. Bật cờ
+    # này để chuyển sang giữ vận tốc khớp (q̇ đo từ /joint_states) gửi qua
+    # servo_joint_topic — Servo joint path KHÔNG áp singularity scaling → coast qua
+    # ở tốc độ khớp hằng số. Open-loop trong lúc qua, an toàn nhờ emergency_distance
+    # + Servo position-limit + avoid_timeout + rejoin. Sim để false (giữ nguyên).
+    enable_singularity_coast: true
+    singularity:
+      kappa_enter: 20.0   # κ vượt mức này → JOINT_HOLD
+      kappa_exit:  18.0   # κ tụt dưới mức này → về CARTESIAN_TWIST (gap = dải hysteresis chống chatter)
+
+    # ======== Trajectory controller handoff — REAL ROBOT ========
+    # KHÁC SIM: trên robot thật quỹ đạo chạy bằng scaled_joint_trajectory_controller,
+    # và bật controller switching (Stage 2b): khi AAPF_AVOID -> switch sang
+    # forward_position_controller để stream Servo; khi rejoin -> switch về scaled.
+    controller_follow_action:     "/scaled_joint_trajectory_controller/follow_joint_trajectory"
+    resume_trajectory_on_rejoin:  true
+    # Re-IK resume (Cách 3): re-solve remaining path's IK from real current joints +
+    # TOTG re-time → fixes wrist-flip state-tolerance abort on rejoin. Requires
+    # kinematics.yaml loaded into this node (done in aapf_supervisor_real.launch.py).
+    reik_resume:                  true
+    # Re-IK re-times the rebuilt suffix with TOTG (defaults to 100% of joint limits).
+    # Scale it to match the original plan's speed so the resumed segment isn't faster
+    # than the pre-avoidance motion. On real this stacks with the pendant speed slider.
+    resume_velocity_scaling:      0.1
+    resume_acceleration_scaling:  0.1
+    # resume_delay_sec is IGNORED here: with controller switching the resume is sent
+    # in the switch-to-scaled success callback (forward is already deactivated), so
+    # there is no Servo↔JTC topic contention to wait out — unlike sim's single controller.
+    enable_controller_switch:     true
+    motion_controller:            "scaled_joint_trajectory_controller"   # chạy quỹ đạo (FOLLOW)
+    servo_controller:             "forward_position_controller"          # stream Servo (AVOID)
+
+    # ======== MoveIt group / frames ========
+    move_group_name: "ur3_manipulator"
+    planning_frame:  "world"
+    ee_link:         "tool0"
+
+    # ======== AAPF velocity tuning (§12: AAPF velocity) ========
+    aapf:
+      k_att:                1.5     # attractive gain (pull toward P1)
+      k_rep:                0.2    # repulsive gain (push off obstacle surface)
+      influence_distance:   0.10    # [m] ρ0 — repulsion influence radius (start of v_rep)
+      v_max:                0.20    # [m/s] output linear-velocity cap
+      v_min:                0.05    # [m/s] floor on non-zero commands
+      repulsive_saturation: 0.20    # [m/s] (B1) cap MỖI số hạng đẩy, mềm hơn (was 0.50)
+      v_rep_max:            0.20    # [m/s] (B2) cap TỔNG repulsion trước khi cộng attraction (<v_max=0.20)
+      command_frame:        "world"
+
+# ----------------------------------------------------------------------------
+# ObstacleManager — dev helper to spawn a single sphere into the planning scene.
+# ----------------------------------------------------------------------------
+obstacle_manager:
+  ros__parameters:
+    obstacle:
+      id:        "test_sphere"
+      frame_id:  "world"
+      x:         0.5
+      y:         0.0
+      z:         0.6
+      radius:    0.1
+
+# ----------------------------------------------------------------------------
+# InteractiveObstacle — peer obstacle source you drag in RViz.
+# ----------------------------------------------------------------------------
+interactive_obstacle:
+  ros__parameters:
+    obstacle:
+      id:        "interactive_obstacle"
+      frame_id:  "world"
+      x:         0.5
+      y:         0.3
+      z:         0.6
+      radius:    0.1

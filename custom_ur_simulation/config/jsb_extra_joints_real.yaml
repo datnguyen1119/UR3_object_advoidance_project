@@ -1,0 +1,9 @@
+# Override CHỈ cho joint_state_broadcaster ở bringup REAL (truyền qua spawner --param-file).
+# Khớp gripper không có hardware interface trên robot thật (xem ur3.ros2_control.xacro),
+# nên không ai publish state -> MoveIt báo "complete state not yet known. Missing robotiq_85_left_knuckle_joint".
+# extra_joints bảo broadcaster tự publish khớp này ở vị trí 0 (có timestamp) -> state đủ -> hết warning.
+# Không điều khiển gripper thật; chỉ làm planning-scene đầy đủ.
+joint_state_broadcaster:
+  ros__parameters:
+    extra_joints:
+      - robotiq_85_left_knuckle_joint

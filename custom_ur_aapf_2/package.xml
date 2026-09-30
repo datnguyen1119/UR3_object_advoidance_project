@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>custom_ur_aapf_2</name>
+  <version>0.0.0</version>
+  <description>
+    Local AAPF avoidance supervisor (v2) for the UR3 setup. Scans the N
+    waypoints ahead of the EE on the global trajectory, resolves a near/far
+    waypoint pair (P2/P1), and when an obstacle blocks the path between them it
+    cancels the global trajectory and streams an attractive + repulsive
+    Cartesian twist into moveit_servo until the EE can rejoin the path. Runs a
+    5-state machine (FOLLOW_TRAJECTORY / CHECK_AAPF_CONDITION / AAPF_AVOID /
+    RETURN_TO_TRAJECTORY / STOP_OR_REPLAN) with error reporting.
+  </description>
+  <maintainer email="dat.nt216082@sis.hust.edu.vn">dat-ubuntu2204</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
+  <depend>rclcpp_components</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>trajectory_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>controller_manager_msgs</depend>
+  <depend>shape_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>interactive_markers</depend>
+  <depend>moveit_msgs</depend>
+  <depend>moveit_core</depend>
+  <depend>moveit_ros_planning</depend>
+  <depend>moveit_ros_planning_interface</depend>
+  <depend>geometric_shapes</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_eigen</depend>
+  <depend>eigen</depend>
+
+  <!-- Only needed at runtime — supervisor publishes into Servo -->
+  <exec_depend>moveit_servo</exec_depend>
+  <exec_depend>custom_ur_servo</exec_depend>
+  <exec_depend>custom_ur_description</exec_depend>
+  <exec_depend>ur3_moveit_config</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

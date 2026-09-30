@@ -1,0 +1,64 @@
+###############################################
+# MoveIt Servo configuration for UR3 (Gazebo sim)
+###############################################
+
+# Set true when running under Gazebo with the ROS2 control stack — Servo will
+# insert a short publish delay so trajectory points arrive monotonically.
+use_gazebo: true
+
+## ---- Incoming commands ----
+# "unitless" -> commands in [-1, 1] scaled by 'scale' below (joystick-style)
+# "speed_units" -> commands in m/s and rad/s, 'scale' ignored
+command_in_type: "speed_units"
+scale:
+  linear: 0.4         # [m/s]  Cartesian commands
+  rotational: 0.8     # [rad/s] Cartesian commands
+  joint: 0.5          # [rad/s] joint commands
+
+# Low-pass filter on outgoing joint commands. Larger -> smoother but laggier.
+low_pass_filter_coeff: 2.0
+
+## ---- Outgoing commands ----
+publish_period: 0.05                              # ~30 Hz output
+command_out_type: trajectory_msgs/JointTrajectory  # matches joint_trajectory_controller
+publish_joint_positions: true
+publish_joint_velocities: false
+publish_joint_accelerations: false
+
+## ---- MoveIt config ----
+move_group_name: ur3_manipulator        # must match a <group> in ur.srdf
+planning_frame: base_link
+ee_frame_name: tool0                   # last link of the UR3 arm (no gripper)
+robot_link_command_frame: base_link    # frame in which Cartesian cmds are interpreted
+
+## ---- Stopping / safety ----
+incoming_command_timeout: 0.1          # [s] halt if no fresh command
+num_outgoing_halt_msgs_to_publish: 4   # republish halt N times in case of drops
+
+## ---- Singularity & joint-limit handling ----
+lower_singularity_threshold: 25.0      # start slowing down at this condition number
+hard_stop_singularity_threshold: 40.0  # full stop
+joint_limit_margin: 0.1                # [rad] buffer near joint limits
+
+## ---- Joint locking (freeze khớp khi Servo chạy = khi AAPF né) ----
+# Zero cột Jacobian (nhánh Cartesian) + delta JointJog (nhánh coast) của các khớp
+# này → 5 khớp còn lại tự giải twist né, khớp bị khóa đứng yên. [] = không khóa.
+lock_joints: ["wrist_2_joint"]
+
+## ---- Topic names (must match servo_keyboard_input publishers) ----
+cartesian_command_in_topic: /delta_twist_cmds
+joint_command_in_topic:     /delta_joint_cmds
+joint_topic: /joint_states
+status_topic: ~/status
+command_out_topic: /joint_trajectory_controller/joint_trajectory
+
+## ---- Collision checking ----
+# DISABLED: the AAPF supervisor (custom_ur_aapf_2) is the obstacle-avoidance
+# authority here (repulsive velocity + emergency_distance stop). Servo's own
+# collision braking fights the AAPF maneuver — it decelerates to ~0 whenever the
+# EE moves toward the obstacle, even tangentially (status 3 = DECELERATE_FOR_COLLISION).
+# Re-enable (true) only if you remove the AAPF layer and want Servo to self-protect.
+check_collisions: false
+collision_check_rate: 10.0
+self_collision_proximity_threshold: 0.01
+scene_collision_proximity_threshold: 0.02

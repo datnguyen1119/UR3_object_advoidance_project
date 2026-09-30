@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>custom_ur_human_tracking</name>
+  <version>0.0.0</version>
+  <description>
+    Human arm tracking (perception) node. Uses MediaPipe Pose + an AprilTag
+    (ArUco) marker as an intermediate origin to track a person's shoulder/elbow/
+    wrist, auto-calibrates limb lengths from a held T-Pose, and republishes the
+    forearm into the Gazebo "world" frame as a PoseArray (/human_skeleton) plus
+    RViz MarkerArray (/ghost_arm_visual). A companion node (human_obstacle_bridge)
+    turns the tracked forearm into a chain of SPHERE collision objects on
+    /planning_scene so the AAPF supervisor (custom_ur_aapf_2) avoids the person.
+  </description>
+  <maintainer email="dat.nt216082@sis.hust.edu.vn">dat-ubuntu2204</maintainer>
+  <license>TODO: License declaration</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>moveit_msgs</exec_depend>
+  <exec_depend>shape_msgs</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <!-- cv_bridge cố tình KHÔNG dùng: nó biên dịch theo numpy 1.x -> segfault trên
+       numpy 2. Node tự chuyển đổi Image<->numpy. mediapipe(0.10.35)/opencv-contrib/
+       numpy 2 là pip deps, không phải rosdep key ở đây. -->
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
